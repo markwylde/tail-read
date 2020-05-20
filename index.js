@@ -22,10 +22,12 @@ function streamFile (addCloseHook, path, eventEmitter, lastPosition = 0, chunks 
     again();
   });
 
-  addCloseHook(function () {
+  addCloseHook(function (callback) {
     closing = true;
     watcher.close();
     stream.destroy();
+
+    callback && callback();
   });
 
   const stream = fs.createReadStream(path, { start: lastPosition });
@@ -64,7 +66,7 @@ function tailFile (path) {
     _eventEmitter: eventEmitter,
     on: eventEmitter.addListener.bind(eventEmitter),
     off: eventEmitter.addListener.bind(eventEmitter),
-    close: () => closeHook()
+    close: (callback) => closeHook(callback)
   };
 }
 

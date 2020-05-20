@@ -69,3 +69,13 @@ test('close before new line', t => {
 
   t.pass();
 });
+
+test('close calls callback', t => {
+  t.plan(1);
+
+  fs.writeFileSync('/tmp/test.txt', 'one');
+
+  const tail = tailRead('/tmp/test.txt');
+
+  tail.close(t.pass);
+});
