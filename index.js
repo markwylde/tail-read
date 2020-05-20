@@ -2,9 +2,9 @@ const fs = require('fs');
 const EventEmitter = require('events');
 const bsplit = require('buffer-split');
 
-const newLineBuffer = Buffer.from('\n');
+const newLineBuffer = Buffer.from('\n', 'utf8');
 
-function streamFile (addCloseHook, path, eventEmitter, lastPosition = 0, chunks = Buffer.from(''), lineCount = 0, bufferPosition = 0) {
+function streamFile (addCloseHook, path, eventEmitter, lastPosition = 0, chunks = Buffer(0), lineCount = 0, bufferPosition = 0) {
   let more = false;
   let ended = false;
   let closing = false;
@@ -44,9 +44,9 @@ function streamFile (addCloseHook, path, eventEmitter, lastPosition = 0, chunks 
     const remains = chunkLines.slice(-1);
 
     complete.forEach(line => {
-      bufferPosition = bufferPosition + line.length;
-      lineCount = lineCount + 1;
       eventEmitter.emit('line', line.toString('utf8'), lineCount, bufferPosition);
+      bufferPosition = bufferPosition + line.length + newLineBuffer.length
+      lineCount = lineCount + 1;
     });
 
     chunks = remains[0];
