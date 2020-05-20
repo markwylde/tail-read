@@ -16,7 +16,7 @@ test('can tail a file', t => {
 });
 
 test('can tail a file with added data', t => {
-  t.plan(1);
+  t.plan(2);
 
   fs.writeFileSync('/tmp/test.txt', 'one\n');
   const interval = setInterval(() => {
@@ -26,10 +26,11 @@ test('can tail a file with added data', t => {
   const tail = tailRead('/tmp/test.txt');
 
   const lines = [];
-  tail.on('line', function (data) {
+  tail.on('line', function (data, lineNumber) {
     lines.push(data);
     if (lines.length > 1) {
       t.deepEqual(lines, ['one', 'two']);
+      t.equal(lineNumber, 2);
       clearInterval(interval);
       tail.close();
     }

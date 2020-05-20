@@ -1,7 +1,7 @@
 const fs = require('fs');
 const EventEmitter = require('events');
 
-function streamFile (addCloseHook, path, eventEmitter, lastPosition = 0, chunks = '') {
+function streamFile (addCloseHook, path, eventEmitter, lastPosition = 0, chunks = '', lineCount = 0) {
   let more = false;
   let ended = false;
   let closing = false;
@@ -11,7 +11,7 @@ function streamFile (addCloseHook, path, eventEmitter, lastPosition = 0, chunks 
       return;
     }
     if (ended && more) {
-      streamFile(addCloseHook, path, eventEmitter, lastPosition + stream.bytesRead, chunks);
+      streamFile(addCloseHook, path, eventEmitter, lastPosition + stream.bytesRead, chunks, lineCount);
     }
   }
 
@@ -40,7 +40,8 @@ function streamFile (addCloseHook, path, eventEmitter, lastPosition = 0, chunks 
     const remains = chunkLines.slice(-1);
 
     complete.forEach(line => {
-      eventEmitter.emit('line', line);
+      lineCount = lineCount + 1;
+      eventEmitter.emit('line', line, lineCount);
     });
 
     chunks = remains;
