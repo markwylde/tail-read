@@ -27,7 +27,7 @@ function streamFile (addCloseHook, path, eventEmitter, lastPosition = 0, chunks 
     watcher.close();
     stream.destroy();
 
-    callback()
+    callback && callback();
   });
 
   const stream = fs.createReadStream(path, { start: lastPosition });
