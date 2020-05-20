@@ -12,5 +12,8 @@
   "devDependencies": {
     "c8": "^7.1.2",
     "tape": "^5.0.0"
+  },
+  "dependencies": {
+    "buffer-split": "^1.0.0"
   }
 }

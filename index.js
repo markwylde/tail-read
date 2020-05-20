@@ -1,7 +1,10 @@
 const fs = require('fs');
 const EventEmitter = require('events');
+const bsplit = require('buffer-split');
 
-function streamFile (addCloseHook, path, eventEmitter, lastPosition = 0, chunks = '', lineCount = 0) {
+const newLineBuffer = Buffer.from('\n');
+
+function streamFile (addCloseHook, path, eventEmitter, lastPosition = 0, chunks = Buffer.from(''), lineCount = 0, bufferPosition = 0) {
   let more = false;
   let ended = false;
   let closing = false;
@@ -11,7 +14,7 @@ function streamFile (addCloseHook, path, eventEmitter, lastPosition = 0, chunks 
       return;
     }
     if (ended && more) {
-      streamFile(addCloseHook, path, eventEmitter, lastPosition + stream.bytesRead, chunks, lineCount);
+      streamFile(addCloseHook, path, eventEmitter, lastPosition + stream.bytesRead, chunks, lineCount, bufferPosition);
     }
   }
 
@@ -33,18 +36,20 @@ function streamFile (addCloseHook, path, eventEmitter, lastPosition = 0, chunks 
   const stream = fs.createReadStream(path, { start: lastPosition });
 
   stream.on('data', chunk => {
-    chunks = chunks + chunk.toString('utf8');
-    const chunkLines = chunks.split('\n');
+    chunks = Buffer.concat([chunks, chunk]);
+
+    const chunkLines = bsplit(chunks, newLineBuffer);
 
     const complete = chunkLines.slice(0, -1);
     const remains = chunkLines.slice(-1);
 
     complete.forEach(line => {
+      bufferPosition = bufferPosition + line.length;
       lineCount = lineCount + 1;
-      eventEmitter.emit('line', line, lineCount);
+      eventEmitter.emit('line', line.toString('utf8'), lineCount, bufferPosition);
     });
 
-    chunks = remains;
+    chunks = remains[0];
   });
 
   stream.on('end', () => {

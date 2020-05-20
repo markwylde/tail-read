@@ -12,8 +12,10 @@ const tailRead = require('tail-read');
 
 const tail = tailRead('./test.txt');
 
-tail.on('line', function(data) {
-  console.log(data)
+tail.on('line', function(data, lineNumber, bufferPosition) {
+  console.log('Appended data: ', data)
+  console.log('Line number: ', lineNumber)
+  console.log('Buffer position: ', bufferPosition)
 });
 
 setTimeout(function () {
