@@ -4,75 +4,61 @@ const bsplit = require('buffer-split');
 
 const newLineBuffer = Buffer.from('\n', 'utf8');
 
-function streamFile (addCloseHook, path, eventEmitter, lastPosition = 0, chunks = Buffer(0), lineCount = 0, bufferPosition = 0) {
-  let more = false;
-  let ended = false;
-  let closing = false;
-
-  function again () {
-    if (closing) {
-      return;
-    }
-    if (ended && more) {
-      streamFile(addCloseHook, path, eventEmitter, lastPosition + stream.bytesRead, chunks, lineCount, bufferPosition);
-    }
-  }
-
-  const watcher = fs.watch(path, function (event) {
-    watcher.close();
-    more = true;
-
-    again();
-  });
-
-  addCloseHook(function (callback) {
-    closing = true;
-    watcher.close();
-    stream.destroy();
-
-    callback && callback();
-  });
-
-  const stream = fs.createReadStream(path, { start: lastPosition });
-
-  stream.on('data', chunk => {
-    chunks = Buffer.concat([chunks, chunk]);
-
-    const chunkLines = bsplit(chunks, newLineBuffer);
-
-    const complete = chunkLines.slice(0, -1);
-    const remains = chunkLines.slice(-1);
-
-    complete.forEach(line => {
-      eventEmitter.emit('line', line.toString('utf8'), lineCount, bufferPosition);
-      bufferPosition = bufferPosition + line.length + newLineBuffer.length
-      lineCount = lineCount + 1;
-    });
-
-    chunks = remains[0];
-  });
-
-  stream.on('end', () => {
-    ended = true;
-    again();
-  });
-}
-
 function tailFile (path) {
   const eventEmitter = new EventEmitter();
+  let lastBytePosition = 0;
+  let chunks = Buffer.alloc(0);
+  let lineCount = 0;
+  let bufferPosition = 0;
+  let stream;
 
-  let closeHook;
-  function addCloseHook (fn) {
-    closeHook = fn;
+  function readNextData () {
+    stream = fs.createReadStream(path, { start: lastBytePosition });
+    stream.on('data', chunk => {
+      chunks = Buffer.concat([chunks, chunk]);
+
+      const chunkLines = bsplit(chunks, newLineBuffer);
+
+      const complete = chunkLines.slice(0, -1);
+      const remains = chunkLines.slice(-1);
+
+      complete.forEach(line => {
+        lineCount = lineCount + 1;
+        bufferPosition = bufferPosition + line.length + newLineBuffer.length;
+        eventEmitter.emit('line', line.toString('utf8'), lineCount, bufferPosition);
+      });
+
+      chunks = remains[0];
+    });
+
+    stream.on('end', () => {
+      lastBytePosition = lastBytePosition + stream.bytesRead;
+      stream = null;
+    });
   }
 
-  streamFile(addCloseHook, path, eventEmitter);
+  const watcher = fs.watch(path, { encoding: 'buffer' }, (eventType, filename) => {
+    if (filename) {
+      readNextData();
+    }
+  });
+
+  setTimeout(readNextData);
 
   return {
     _eventEmitter: eventEmitter,
     on: eventEmitter.addListener.bind(eventEmitter),
     off: eventEmitter.removeListener.bind(eventEmitter),
-    close: (callback) => closeHook(callback)
+    close: (callback) => {
+      watcher.close();
+      if (stream) {
+        stream.on('end', callback || (() => {}));
+        stream.close();
+        return;
+      }
+
+      callback && callback();
+    }
   };
 }
 

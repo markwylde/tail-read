@@ -31,7 +31,7 @@ test('can tail a file with added data', t => {
     if (lines.length > 1) {
       t.deepEqual(lines, ['one', 'two']);
       t.equal(lineNumber, 2);
-      t.equal(bufferPosition, 6);
+      t.equal(bufferPosition, 8);
       clearInterval(interval);
       tail.close();
     }
