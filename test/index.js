@@ -81,3 +81,69 @@ test('close calls callback', t => {
 
   tail.close(t.pass);
 });
+
+test('low stress test', t => {
+  t.plan(2);
+
+  fs.writeFileSync('/tmp/test.txt', '');
+  const writtenLines = [];
+
+  const interval = setInterval(() => {
+    const line = `hello at ${Date.now()}\n`;
+    writtenLines.push(line);
+    fs.writeFileSync('/tmp/test.txt', line, { flag: 'a' });
+  }, 1);
+
+  const tail = tailRead('/tmp/test.txt');
+
+  const readLines = [];
+  tail.on('line', function (data, lineNumber, bufferPosition) {
+    readLines.push(data + '\n');
+  });
+
+  setTimeout(function () {
+    clearInterval(interval);
+
+    setTimeout(() => {
+      tail.close();
+      t.equal(writtenLines.length, readLines.length);
+      t.deepEqual(writtenLines.sort(), readLines.sort());
+    }, 30);
+  }, 100);
+});
+
+test('high stress test', t => {
+  t.plan(2);
+
+  fs.writeFileSync('/tmp/test.txt', '');
+  const writtenLines = [];
+
+  const intervals = [];
+
+  for (let worker = 0; worker < 1000; worker++) {
+    const interval = setInterval(() => {
+      const line = `hello at ${Date.now()}\n`;
+      writtenLines.push(line);
+      fs.writeFileSync('/tmp/test.txt', line, { flag: 'a' });
+    }, 1);
+    intervals.push(interval);
+  }
+
+  const tail = tailRead('/tmp/test.txt');
+
+  const readLines = [];
+  tail.on('line', function (data, lineNumber, bufferPosition) {
+    readLines.push(data + '\n');
+  });
+
+  setTimeout(function () {
+    intervals.forEach(interval => clearInterval(interval));
+
+    setTimeout(() => {
+      tail.close();
+
+      t.equal(writtenLines.length, readLines.length);
+      t.deepEqual(writtenLines.sort(), readLines.sort());
+    }, 100);
+  }, 1000);
+});
