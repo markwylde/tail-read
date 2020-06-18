@@ -2,16 +2,54 @@ const fs = require('fs');
 const test = require('tape');
 const tailRead = require('../');
 
-test('can tail a file', t => {
+test('will not output incomplete line', t => {
   t.plan(1);
 
-  fs.writeFileSync('/tmp/test.txt', 'one\n');
+  fs.writeFileSync('/tmp/test.txt', 'one');
 
   const tail = tailRead('/tmp/test.txt');
 
   tail.on('line', function (data) {
-    t.equal(data, 'one');
+    t.fail();
+  });
+
+  setTimeout(() => {
     tail.close();
+    t.pass();
+  }, 100);
+});
+
+test('can tail a file', t => {
+  t.plan(1);
+
+  fs.writeFileSync('/tmp/test.txt', 'one\ntwo\n');
+
+  const tail = tailRead('/tmp/test.txt');
+
+  const lines = [];
+  tail.on('line', function (data) {
+    lines.push(data);
+    if (lines.length === 2) {
+      t.deepEqual(lines, ['one', 'two']);
+      tail.close();
+    }
+  });
+});
+
+test('can tail a file with custom delimiter', t => {
+  t.plan(1);
+
+  fs.writeFileSync('/tmp/test.txt', 'one-two-');
+
+  const tail = tailRead('/tmp/test.txt', Buffer.from('-'));
+
+  const lines = [];
+  tail.on('line', function (data) {
+    lines.push(data);
+    if (lines.length === 2) {
+      t.deepEqual(lines, ['one', 'two']);
+      tail.close();
+    }
   });
 });
 

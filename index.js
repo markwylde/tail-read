@@ -3,9 +3,9 @@ const bsplit = require('buffer-split');
 
 const EventEmitter = require('events');
 
-const newLineBuffer = Buffer.from('\n', 'utf8');
+const defaultNewLineBuffer = Buffer.from('\n', 'utf8');
 
-function tailFile (path) {
+function tailFile (path, newLineBuffer = defaultNewLineBuffer) {
   const eventEmitter = new EventEmitter();
 
   let buffer = Buffer.alloc(0);
