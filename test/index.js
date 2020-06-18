@@ -28,7 +28,7 @@ test('can tail a file', t => {
 
   const lines = [];
   tail.on('line', function (data) {
-    lines.push(data);
+    lines.push(data.toString('utf8'));
     if (lines.length === 2) {
       t.deepEqual(lines, ['one', 'two']);
       tail.close();
@@ -45,7 +45,7 @@ test('can tail a file with custom delimiter', t => {
 
   const lines = [];
   tail.on('line', function (data) {
-    lines.push(data);
+    lines.push(data.toString('utf8'));
     if (lines.length === 2) {
       t.deepEqual(lines, ['one', 'two']);
       tail.close();
@@ -65,7 +65,7 @@ test('can tail a file with added data', t => {
 
   const lines = [];
   tail.on('line', function (data, lineNumber, bufferPosition) {
-    lines.push(data);
+    lines.push(data.toString('utf8'));
     if (lines.length > 1) {
       t.deepEqual(lines, ['one', 'two']);
       t.equal(lineNumber, 2);
@@ -88,7 +88,7 @@ test('tail then close immediatly', t => {
 
   const lines = [];
   tail.on('line', function (data) {
-    lines.push(data);
+    lines.push(data.toString('utf8'));
   });
 
   setTimeout(() => {
@@ -136,7 +136,7 @@ test('low stress test', t => {
 
   const readLines = [];
   tail.on('line', function (data, lineNumber, bufferPosition) {
-    readLines.push(data + '\n');
+    readLines.push(data.toString('utf8') + '\n');
   });
 
   setTimeout(function () {
@@ -171,7 +171,7 @@ test('high stress test', t => {
 
   const readLines = [];
   tail.on('line', function (data, lineNumber, bufferPosition) {
-    readLines.push(data + '\n');
+    readLines.push(data.toString('utf8') + '\n');
   });
 
   setTimeout(function () {

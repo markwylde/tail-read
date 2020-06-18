@@ -24,7 +24,7 @@ function tailFile (path, newLineBuffer = defaultNewLineBuffer) {
 
       lineCount = lineCount + 1;
       bufferPosition = bufferPosition + line.length;
-      eventEmitter.emit('line', line.slice(0, -newLineBuffer.length).toString('utf8'), lineCount, bufferPosition);
+      eventEmitter.emit('line', line.slice(0, -newLineBuffer.length), lineCount, bufferPosition);
     });
   }
 
@@ -43,6 +43,7 @@ function tailFile (path, newLineBuffer = defaultNewLineBuffer) {
 
   return {
     _eventEmitter: eventEmitter,
+    _stream: stream,
     on: eventEmitter.addListener.bind(eventEmitter),
     off: eventEmitter.removeListener.bind(eventEmitter),
     close: (callback) => {
