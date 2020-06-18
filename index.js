@@ -46,13 +46,8 @@ function tailFile (path) {
     on: eventEmitter.addListener.bind(eventEmitter),
     off: eventEmitter.removeListener.bind(eventEmitter),
     close: (callback) => {
-      if (stream) {
-        stream.on('end', callback || (() => {}));
-        stream.end();
-        return;
-      }
-
-      callback && callback();
+      stream.on('end', callback || (() => {}));
+      stream.end();
     }
   };
 }
