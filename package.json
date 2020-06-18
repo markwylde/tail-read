@@ -14,6 +14,7 @@
     "tape": "^5.0.0"
   },
   "dependencies": {
-    "buffer-split": "^1.0.0"
+    "buffer-split": "^1.0.0",
+    "tail-stream": "^0.3.4"
   }
 }
