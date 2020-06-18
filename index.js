@@ -1,6 +1,7 @@
-const fs = require('fs');
-const EventEmitter = require('events');
+const ts = require('tail-stream');
 const bsplit = require('buffer-split');
+
+const EventEmitter = require('events');
 
 const newLineBuffer = Buffer.from('\n', 'utf8');
 
@@ -8,11 +9,8 @@ function tailFile (path) {
   const eventEmitter = new EventEmitter();
 
   let buffer = Buffer.alloc(0);
-  let lastBytePosition = 0;
   let bufferPosition = 0;
   let lineCount = 0;
-  let stream;
-  let hasMore = false;
 
   function parseBuffer () {
     const lines = bsplit(buffer, newLineBuffer, true);
@@ -30,52 +28,26 @@ function tailFile (path) {
     });
   }
 
-  function readNextData () {
-    if (stream) {
-      hasMore = true;
-      return;
-    }
-
-    hasMore = false;
-
-    stream = fs.createReadStream(path, { highWaterMark: 10000000, start: lastBytePosition });
-
-    stream.on('data', chunk => {
-      lastBytePosition = lastBytePosition + chunk.length;
-      buffer = Buffer.concat([buffer, chunk]);
-      parseBuffer();
-    });
-
-    stream.on('end', () => {
-      stream = null;
-
-      if (hasMore) {
-        readNextData();
-      }
-    });
-  }
-
-  const watcher = fs.watch(path, { encoding: 'buffer' }, (eventType, filename) => {
-    if (filename) {
-      readNextData();
-    }
+  const stream = ts.createReadStream(path, {
+    beginAt: 0,
+    onMove: 'follow',
+    detectTruncate: true,
+    onTruncate: 'end',
+    endOnError: false
   });
 
-  setTimeout(readNextData);
+  stream.on('data', chunk => {
+    buffer = Buffer.concat([buffer, chunk]);
+    parseBuffer();
+  });
 
   return {
     _eventEmitter: eventEmitter,
     on: eventEmitter.addListener.bind(eventEmitter),
     off: eventEmitter.removeListener.bind(eventEmitter),
     close: (callback) => {
-      watcher.close();
-      if (stream) {
-        stream.on('end', callback || (() => {}));
-        stream.close();
-        return;
-      }
-
-      callback && callback();
+      stream.on('end', callback || (() => {}));
+      stream.end();
     }
   };
 }

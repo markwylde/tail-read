@@ -144,6 +144,6 @@ test('high stress test', t => {
 
       t.equal(writtenLines.length, readLines.length);
       t.deepEqual(writtenLines.sort(), readLines.sort());
-    }, 100);
-  }, 1000);
+    }, 1000);
+  }, 2000);
 });
