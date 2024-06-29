@@ -1,56 +1,113 @@
-const ts = require('tail-stream');
-const bsplit = require('buffer-split');
+import fs from 'fs';
+import EventEmitter from 'events';
 
-const EventEmitter = require('events');
-
-const defaultNewLineBuffer = Buffer.from('\n', 'utf8');
-
-function tailFile (path, newLineBuffer = defaultNewLineBuffer) {
-  const eventEmitter = new EventEmitter();
-
+function tailRead(filePath, delimiter = Buffer.from('\n')) {
+  const emitter = new EventEmitter();
+  let watcher;
   let buffer = Buffer.alloc(0);
+  let lineNumber = 0;
   let bufferPosition = 0;
-  let lineCount = 0;
+  let fileSize = 0;
+  let reading = false;
+  let closed = false;
+  let errorEmitted = false;
 
-  function parseBuffer () {
-    const lines = bsplit(buffer, newLineBuffer, true);
-    buffer = Buffer.alloc(0);
+  function readFile() {
+    if (reading || closed) return;
+    reading = true;
 
-    lines.forEach(line => {
-      if (!line.includes(newLineBuffer)) {
-        buffer = Buffer.concat([line]);
+    fs.stat(filePath, (err, stats) => {
+      if (err) {
+        reading = false;
+        handleError(err);
         return;
       }
 
-      lineCount = lineCount + 1;
-      bufferPosition = bufferPosition + line.length;
-      eventEmitter.emit('line', line.slice(0, -newLineBuffer.length), lineCount, bufferPosition);
+      if (stats.size < fileSize) {
+        // File has been truncated
+        fileSize = 0;
+        buffer = Buffer.alloc(0);
+        lineNumber = 0;
+        bufferPosition = 0;
+        emitter.emit('truncate');
+      }
+
+      if (stats.size > fileSize) {
+        const stream = fs.createReadStream(filePath, { start: fileSize });
+        stream.on('error', handleError);
+        stream.on('data', (chunk) => {
+          processData(chunk);
+          fileSize += chunk.length;
+        });
+        stream.on('end', () => {
+          reading = false;
+          if (stats.size > fileSize && !closed) {
+            setImmediate(readFile);
+          }
+        });
+      } else {
+        reading = false;
+      }
     });
   }
 
-  const stream = ts.createReadStream(path, {
-    beginAt: 0,
-    onMove: 'follow',
-    detectTruncate: true,
-    onTruncate: 'end',
-    endOnError: false
+  function processData(data) {
+    buffer = Buffer.concat([buffer, data]);
+    let delimiterIndex;
+
+    while ((delimiterIndex = buffer.indexOf(delimiter)) !== -1) {
+      const line = buffer.slice(0, delimiterIndex);
+      buffer = buffer.slice(delimiterIndex + delimiter.length);
+      lineNumber++;
+      bufferPosition += line.length + delimiter.length;
+      emitter.emit('line', line.toString(), lineNumber, bufferPosition);
+    }
+  }
+
+  function watchFile() {
+    if (closed) return;
+
+    try {
+      watcher = fs.watch(filePath, (eventType) => {
+        if (eventType === 'change' && !closed) {
+          readFile();
+        }
+      });
+      watcher.on('error', handleError);
+
+      if (closed) {
+        watcher.close();
+      }
+    } catch (err) {
+      handleError(err);
+    }
+  }
+
+  function handleError(err) {
+    if (!closed && !errorEmitted) {
+      errorEmitted = true;
+      emitter.emit('error', err);
+    }
+  }
+
+  process.nextTick(() => {
+    if (!closed) {
+      readFile();
+      watchFile();
+    }
   });
 
-  stream.on('data', chunk => {
-    buffer = Buffer.concat([buffer, chunk]);
-    parseBuffer();
-  });
-
-  return {
-    _eventEmitter: eventEmitter,
-    _stream: stream,
-    on: eventEmitter.addListener.bind(eventEmitter),
-    off: eventEmitter.removeListener.bind(eventEmitter),
-    close: (callback) => {
-      stream.on('end', callback || (() => {}));
-      stream.end();
+  emitter.close = (callback) => {
+    closed = true;
+    if (watcher) {
+      watcher.close();
+    }
+    if (callback) {
+      process.nextTick(callback);
     }
   };
+
+  return emitter;
 }
 
-module.exports = tailFile;
+export default tailRead;

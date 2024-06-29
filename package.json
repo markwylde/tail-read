@@ -1,20 +1,20 @@
 {
   "name": "tail-read",
   "version": "1.11.0",
+  "type": "module",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "c8 -o /tmp node test"
+    "test": "c8 -o /tmp node --test"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "c8": "^7.1.2",
-    "tape": "^5.0.0"
+  "author": {
+    "email": "me@markwylde.com",
+    "name": "Mark Wylde",
+    "url": "https://github.com/markwylde"
   },
-  "dependencies": {
-    "buffer-split": "^1.0.0",
-    "tail-stream": "^0.3.4"
+  "license": "MIT",
+  "devDependencies": {
+    "c8": "^10.1.2"
   }
 }
